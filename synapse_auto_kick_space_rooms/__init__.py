@@ -137,6 +137,8 @@ class KickSpaceRooms:
 
                 room_ids = await self._store.get_rooms_for_user(event.state_key)
                 user_room_list = list(room_ids)
+                logger.info('USER ROOMS')
+                logger.info(user_room_list)
                 for room in rooms['rooms'] :
                     if 'room_type' in room and room['room_type'] == 'm.space':
                         continue
@@ -144,6 +146,8 @@ class KickSpaceRooms:
                     #is_in_room = await self._store.is_host_joined(room['room_id'], self._server_name )
 
                     if room['room_id'] in user_room_list:
+                        logger.info("USER IN ROOM %s",room['room_id'])
+                        logger.info(user_room_list)
                         continue;
 
                     logger.info("Leave RoomiD = %s, roomName = %s",room['room_id'],room['name'])
@@ -158,6 +162,7 @@ class KickSpaceRooms:
                         new_membership="leave",
                     )
             except Exception as e:
+                logger.info(traceback.format_exc())
                 logger.info(traceback.format_exc())
                 return None;
 
