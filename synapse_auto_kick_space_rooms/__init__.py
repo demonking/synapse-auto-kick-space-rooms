@@ -10,6 +10,15 @@ from synapse.types import (
     RoomAlias,
     RoomID,
 )
+from synapse.api.constants import (
+    EventContentFields,
+    EventTypes,
+    HistoryVisibility,
+    JoinRules,
+    Membership,
+    RoomTypes,
+)
+
 from typing import (
     Iterable,
     List,
@@ -55,13 +64,29 @@ class KickSpaceRooms:
             on_new_event=self.on_leave_event,
         )
 
+    async def is_room_a_space(self,event: EventBase):
+        if "room_id" not in event :
+            return False;
+        room_id = event.room_id
+        room_entry = await self._store.get_room_with_stats(room_id) 
+        logger.info(room_entry.keys())
+        logger.info(room_entry.values())
+        if room_entry == None:
+            return False
+
+        current_state_ids = await self._store.get_current_state_ids(room_id)
+        create_event = await self._store.get_event(
+            current_state_ids[(EventTypes.Create, "")]
+        )
+
+
+        if create_event.content.get(EventContentFields.ROOM_TYPE) == RoomTypes.SPACE :
+            return True
+        return False
+
     def get_event_information(self, event : EventBase): 
         values = dict()
-        values['is_space'] = False
         values['room_id'] = event.room_id
-
-        if "invite_room_state" not in event.unsigned:
-            return values['is_space'],values['room_id']
 
         for entry in event.unsigned['invite_room_state']:
             logger.info(entry)
@@ -69,7 +94,7 @@ class KickSpaceRooms:
                 continue
             if entry['type'] == 'm.room.create':
                     values['is_space'] = ('type' in entry['content'] and entry['content']['type'] == 'm.space')
-        return values['is_space'],values['room_id']
+        return values['room_id']
 
     async def on_leave_event(self, event: EventBase, *args: Any) -> None:
         """Listens for new events, and if the event is an invite for a local user then
@@ -80,7 +105,8 @@ class KickSpaceRooms:
         """
         event_dict = event.get_dict()
         logger.info(event_dict)
-        is_space, room_id = self.get_event_information(event); 
+        is_space = await self.is_room_a_space(event)
+        room_id = self.get_event_information(event) 
         # Check if the event is an invite for a local user.
         if (
             event.type == "m.room.member"
