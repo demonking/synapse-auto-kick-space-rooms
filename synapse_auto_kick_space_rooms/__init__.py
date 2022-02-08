@@ -66,12 +66,14 @@ class KickSpaceRooms:
 
     async def is_room_a_space(self,event: EventBase):
         if "room_id" not in event :
+            logger.info('NO ROOM_ID')
             return False;
         room_id = event.room_id
         room_entry = await self._store.get_room_with_stats(room_id) 
         logger.info(room_entry.keys())
         logger.info(room_entry.values())
         if room_entry == None:
+            logger.info('ROOM ENTRY')
             return False
 
         current_state_ids = await self._store.get_current_state_ids(room_id)
@@ -79,9 +81,10 @@ class KickSpaceRooms:
             current_state_ids[(EventTypes.Create, "")]
         )
 
-
         if create_event.content.get(EventContentFields.ROOM_TYPE) == RoomTypes.SPACE :
+            logger.info('YES SPACE')
             return True
+        logger.info('NOTHING HERE Q_Q')
         return False
 
 
