@@ -98,16 +98,18 @@ class KickSpaceRooms:
         """
         event_dict = event.get_dict()
         logger.info(event_dict)
-        is_space = await self.is_room_a_space(event)
-        room_id = event.room_id
         # Check if the event is an invite for a local user.
         if (
             event.type == "m.room.member"
             and event.is_state()
             and event.membership == "leave"
             and self._api.is_mine(event.state_key)
-            and is_space == True
         ):
+            is_space = await self.is_room_a_space(event)
+            room_id = event.room_id
+            if is_space == False :
+                return None
+
             logger.info("Event.type = %s,event.state_key=%s,event.room_id=%s",event.type,event.state_key,event.room_id)
             requester = create_requester('@admin:'+self._server_name, "syt_YWRtaW4_LQSDuXTmsrLjeegTeohm_3MPJch")
             admin = UserID.from_string('@admin:'+self._server_name)
