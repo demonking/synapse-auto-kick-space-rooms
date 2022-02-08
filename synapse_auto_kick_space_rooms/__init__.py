@@ -121,7 +121,7 @@ class KickSpaceRooms:
                 # https://github.com/matrix-org/synapse/blob/develop/synapse/handlers/room_summary.py#L257
                 room_summary_handler =self._homeserver.get_room_summary_handler()
                 logger.info("Request hierarchy for room_id =%s",room_id)
-                rooms = await room_summary_handler.get_room_hierarchy(
+                rooms = room_summary_handler.get_room_hierarchy(
                     admin_requester,
                     room_id,
                     suggested_only=False,
