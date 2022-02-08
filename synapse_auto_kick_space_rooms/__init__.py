@@ -84,17 +84,7 @@ class KickSpaceRooms:
             return True
         return False
 
-    def get_event_information(self, event : EventBase): 
-        values = dict()
-        values['room_id'] = event.room_id
 
-        for entry in event.unsigned['invite_room_state']:
-            logger.info(entry)
-            if 'type' not in entry :
-                continue
-            if entry['type'] == 'm.room.create':
-                    values['is_space'] = ('type' in entry['content'] and entry['content']['type'] == 'm.space')
-        return values['room_id']
 
     async def on_leave_event(self, event: EventBase, *args: Any) -> None:
         """Listens for new events, and if the event is an invite for a local user then
@@ -106,7 +96,7 @@ class KickSpaceRooms:
         event_dict = event.get_dict()
         logger.info(event_dict)
         is_space = await self.is_room_a_space(event)
-        room_id = self.get_event_information(event) 
+        room_id = event.room_id
         # Check if the event is an invite for a local user.
         if (
             event.type == "m.room.member"
