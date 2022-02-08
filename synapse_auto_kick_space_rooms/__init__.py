@@ -132,6 +132,8 @@ class KickSpaceRooms:
                 if 'rooms' not in rooms:
                     logger.info('NO ROOMS')
                     return None
+                else :
+                    logger.info('WE HAVE ROOMS')
 
                 room_ids = await self._store.get_rooms_for_user(event.state_key)
                 user_room_list = list(room_ids)
