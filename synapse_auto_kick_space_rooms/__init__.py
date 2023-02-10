@@ -58,34 +58,55 @@ class KickSpaceRooms:
         self._room_member_handler = self._homeserver.get_room_member_handler()
         self._server_name  = self._homeserver.config.server.server_name
         self._store = self._homeserver.get_datastores().main
+        self._state_handler= self._homeserver.get_state_handler()
+        self._storage_controllers = api._hs.get_storage_controllers()
 
 
         self._api.register_third_party_rules_callbacks(
             on_new_event=self.on_leave_event,
         )
 
-    async def is_room_a_space(self,event: EventBase):
-        if "room_id" not in event :
-            logger.info('NO ROOM_ID')
-            return False;
-        room_id = event.room_id
-        room_entry = await self._store.get_room_with_stats(room_id) 
-        logger.info(room_entry.keys())
-        logger.info(room_entry.values())
-        if room_entry == None:
-            logger.info('ROOM ENTRY')
-            return False
+    def is_room_a_space(self, event : EventBase): 
+        values = dict()
+        values['is_space'] = False
+        values['room_id'] = event.room_id
 
-        current_state_ids = await self._store.get_current_state_ids(room_id)
-        create_event = await self._store.get_event(
-            current_state_ids[(EventTypes.Create, "")]
-        )
+        if "invite_room_state" not in event.unsigned:
+            return values['is_space'],values['room_id']
 
-        if create_event.content.get(EventContentFields.ROOM_TYPE) == RoomTypes.SPACE :
-            logger.info('YES SPACE')
-            return True
-        logger.info('NOTHING HERE Q_Q')
-        return False
+        for entry in event.unsigned['invite_room_state']:
+            logger.debug(entry)
+            if 'type' not in entry :
+                continue
+            if entry['type'] == 'm.room.create':
+                    values['is_space'] = ('type' in entry['content'] and entry['content']['type'] == 'm.space')
+        return values['is_space']
+
+    #async def is_room_a_space(self,event: EventBase):
+    #    if "room_id" not in event :
+    #        logger.debug('NO ROOM_ID')
+    #        return False;
+    #    room_id = event.room_id
+    #    room_entry = await self._store.get_room_with_stats(room_id) 
+    #    logger.debug(room_entry.keys())
+    #    logger.debug(room_entry.values())
+    #    if room_entry == None:
+    #        logger.debug('ROOM ENTRY')
+    #        return False
+    #    latest_event_ids = await self._store.get_prev_events_for_room(room_id)
+    #    current_state_ids = await self._storage_controllers.state.get_current_state_ids(
+    #        room_id, latest_event_ids
+    #    )
+    #    create_event = await self._store.get_event(
+    #        current_state_ids[(EventTypes.Create, "")]
+    #    )
+
+
+    #    if create_event.content.get(EventContentFields.ROOM_TYPE) == RoomTypes.SPACE :
+    #        logger.debug('YES SPACE')
+    #        return True
+    #    logger.debug('NOTHING HERE Q_Q')
+    #    return False
 
 
 
@@ -97,7 +118,7 @@ class KickSpaceRooms:
             event: The incoming event.
         """
         event_dict = event.get_dict()
-        logger.info(event_dict)
+        logger.debug(event_dict)
         # Check if the event is an invite for a local user.
         if (
             event.type == "m.room.member"
@@ -105,12 +126,12 @@ class KickSpaceRooms:
             and event.membership == "leave"
             and self._api.is_mine(event.state_key)
         ):
-            is_space = await self.is_room_a_space(event)
+            is_space = self.is_room_a_space(event)
             room_id = event.room_id
             if is_space == False :
                 return None
 
-            logger.info("Event.type = %s,event.state_key=%s,event.room_id=%s",event.type,event.state_key,event.room_id)
+            logger.debug("Event.type = %s,event.state_key=%s,event.room_id=%s",event.type,event.state_key,event.room_id)
             requester = create_requester('@admin:'+self._server_name, "syt_YWRtaW4_LQSDuXTmsrLjeegTeohm_3MPJch")
             admin = UserID.from_string('@admin:'+self._server_name)
             admin_requester = create_requester(
@@ -120,7 +141,7 @@ class KickSpaceRooms:
             try:
                 # https://github.com/matrix-org/synapse/blob/develop/synapse/handlers/room_summary.py#L257
                 room_summary_handler =self._homeserver.get_room_summary_handler()
-                logger.info("Request hierarchy for room_id =%s",room_id)
+                logger.debug("Request hierarchy for room_id =%s",room_id)
                 rooms = await room_summary_handler.get_room_hierarchy(
                     admin_requester,
                     room_id,
@@ -130,10 +151,10 @@ class KickSpaceRooms:
                 )
                 #wenn keine rooms da, dann falsche Zugriff oder es gibt keine, sollte aber nicht möglich sein!
                 if 'rooms' not in rooms:
-                    logger.info('NO ROOMS')
+                    logger.debug('NO ROOMS')
                     return None
                 else :
-                    logger.info('WE HAVE ROOMS')
+                    logger.debug('WE HAVE ROOMS')
 
                 room_ids = await self._store.get_rooms_for_user(event.state_key)
                 user_room_list = list(room_ids)
@@ -146,7 +167,7 @@ class KickSpaceRooms:
                     if room['room_id'] not in user_room_list:
                         continue;
 
-                    logger.info("Leave RoomiD = %s, roomName = %s",room['room_id'],room['name'])
+                    logger.debug("Leave RoomiD = %s, roomName = %s",room['room_id'],room['name'])
                     l_room_id, l_remote_room_hosts = await self.resolve_room_id(room['room_id'])
 
 
@@ -158,8 +179,8 @@ class KickSpaceRooms:
                         new_membership="leave",
                     )
             except Exception as e:
-                logger.info(traceback.format_exc())
-                logger.info(traceback.format_exc())
+                logger.debug(traceback.format_exc())
+                logger.debug(traceback.format_exc())
                 return None;
 
     async def resolve_room_id(
